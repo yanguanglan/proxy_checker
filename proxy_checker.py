@@ -8,6 +8,7 @@ import re
 import tkinter.scrolledtext
 import configparser
 import check_proxy
+import tkinter.ttk as ttk
 
 num_valid_thread = 100
 
@@ -102,12 +103,23 @@ lab_verify_process = tkinter.Label(top, text="验证进度：未开始")
 btn_start_get = tkinter.Button(top, text="     开始获取    ", command=btn_start_get_click)
 btn_start_valid = tkinter.Button(top, text="     开始验证    ", command=btn_start_valid_click)
 
+frame_tree = ttk.Frame(top)
+tree_view = ttk.Treeview(frame_tree, columns=("代理IP:Port", "延时"), show="headings", height=14)
+scroll_tree_v = ttk.Scrollbar(frame_tree, orient="vertical", command=tree_view.yview)
+scroll_tree_h = ttk.Scrollbar(frame_tree, orient="horizontal", command=tree_view.xview)
+tree_view.config(yscrollcommand=scroll_tree_v.set, xscrollcommand=scroll_tree_h.set)
+tree_view.grid(sticky="sew")
+scroll_tree_v.grid(row=0,column=1, sticky="ns")
+scroll_tree_h.grid(row=1,column=0, sticky="we")
+
 lab_proxy_get.grid(row=0, column=0, sticky="W")
 lab_proxy_valided.grid(row=0, column=2, sticky="W")
 text_proxies_get.grid(row=1, column=0)
 lab_space.grid(row=1, column=1, padx=4)
 text_proxies_valided.grid(row=1, column=2)
-# lab_proxy_count.grid(row=2, column=0, sticky="W")
+
+frame_tree.grid(row=1, column=3, sticky="swe")
+
 lab_verify_process.grid(row=2, column=0, columnspan=3, sticky="E")
 btn_start_get.grid(row=3, column=0, columnspan=2)
 btn_start_valid.grid(row=3, column=2, columnspan=2)
@@ -120,6 +132,10 @@ text_proxies_get.insert(1.0, "\n".join(get_proxies_list))
 text_proxies_valided.insert(1.0, "\n".join(valied_proxies_list))
 lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)) + "）：")
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
+
+
+
+
 maston.center_screen(root, top, 20)
 root.title("代理测试工具 V0.1")
 root.protocol("WM_DELETE_WINDOW", window_closing)

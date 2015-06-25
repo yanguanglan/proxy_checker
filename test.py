@@ -63,7 +63,7 @@ class McListBox(object):
 def sortby(tree, col, descending):
     """sort tree contents when a column header is clicked on"""
     # grab values to sort
-    data = [(tree.set(child, col), child) \
+    data = [(tree.set(child, col), child)
             for child in tree.get_children('')]
     # if the data to be sorted is numeric change to float
     # data =  change_numeric(data)
@@ -72,8 +72,7 @@ def sortby(tree, col, descending):
     for ix, item in enumerate(data):
         tree.move(item[1], '', ix)
     # switch the heading so it will sort in the opposite direction
-    tree.heading(col, command=lambda col=col: sortby(tree, col, \
-                                                     int(not descending)))
+    tree.heading(col, command=lambda col=col: sortby(tree, col, int(not descending)))
 
 
 if __name__ == "__main__":
