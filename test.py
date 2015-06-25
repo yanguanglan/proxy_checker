@@ -3,7 +3,7 @@ import tkinter.font as tkFont
 import tkinter.ttk as ttk
 
 
-class McListBox:
+class McListBox(object):
     """use a ttk.TreeView as a multicolumn ListBox"""
 
     def __init__(self, table_header=None, table_list=None):
