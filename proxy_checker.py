@@ -13,6 +13,8 @@ import check_proxy
 import tkinter.ttk as ttk
 import tkinter.font as tkfont
 import pyperclip
+import os
+import sqlite3
 
 num_valid_thread = 100
 
@@ -22,6 +24,15 @@ class TreeProxies(object):
         self.treeview_proxies = ttk.Treeview(frame_tree, columns=("代理IP:Port", "延时"), show="headings", height=14)
         self.scroll_tree_v = ttk.Scrollbar(frame_tree, orient="vertical", command=self.treeview_proxies.yview)
         self.scroll_tree_h = ttk.Scrollbar(frame_tree, orient="horizontal", command=self.treeview_proxies.xview)
+        if os.path.exists("proxy.db"):
+            self.conn = sqlite3.connect("proxy.db")
+            self.cu = self.conn.cursor()
+        else:
+            self.conn = sqlite3.connect("proxy.db")
+            self.cu = self.conn.cursor()
+            self.cu.execute("CREATE TABLE proxy_valided_list (proxy_port varchar(21), speed integer) ")
+            self.cu.execute("CREATE TABLE proxy_get_list (proxy_port varchar(21)) ")
+        self.cu.execute("PRAGMA synchronous=OFF")
 
     def init_treeview(self, treeview_head):
         self.treeview_proxies.config(yscrollcommand=self.scroll_tree_v.set, xscrollcommand=self.scroll_tree_h.set)
@@ -36,7 +47,7 @@ class TreeProxies(object):
         self.treeview_proxies.column(1, width=40)
         self.treeview_proxies.bind("<Button-3>", self.right_click)
 
-    def add_data_treeview(self, list_data):
+    def add_data_treeview(self, list_data, skip_datebase=False):
         for each_proxy in list_data:
             if len(each_proxy) != 2:
                 continue
@@ -49,10 +60,15 @@ class TreeProxies(object):
             col_size_need = tkfont.Font().measure(str(each_proxy[1])) + 10  # 测试表明系统计算出的数据过小，修正一下
             if col_size_need > col_size_now:
                 self.treeview_proxies.column(1, width=col_size_need)
-            # self.sort_treeview(1, 0)
+        if not skip_datebase:
+            self.cu.executemany("INSERT INTO proxy_valided_list VALUES (?, ?)", list_data)
+            self.conn.commit()
 
     def delete_treeview(self):
         self.treeview_proxies.delete(*self.treeview_proxies.get_children(""))
+        self.cu.execute("DROP TABLE proxy_valided_list")
+        self.cu.execute("CREATE TABLE proxy_valided_list (proxy_port varchar(21), speed integer) ")
+        self.conn.commit()
 
     def sort_treeview(self, col, direct):
         try:
@@ -71,6 +87,10 @@ class TreeProxies(object):
             pass
         else:
             pass
+
+    def read_db(self):
+        self.cu.execute("SELECT * FROM proxy_valided_list")
+        return self.cu.fetchall()
 
 def get_proxy(this_site_info):
     global get_proxies_list
@@ -138,6 +158,16 @@ def window_closing():
     proxy_ini.set("valied_proxy", "proxies_list", valied_proxies_to_save)
     with open("proxy.ini", "w") as f_save_proxy:
         proxy_ini.write(f_save_proxy)
+
+    allproxies_timeout = []
+    for temp_proxy in re.split("\s+", valied_proxies_to_save):
+        temp_temp = re.split("&", temp_proxy)
+        try:
+            allproxies_timeout.append((temp_temp[0], int(temp_temp[1])))
+        except Exception:
+            pass
+    tree_proxies.delete_treeview()
+    tree_proxies.add_data_treeview(allproxies_timeout)
     root.destroy()
 
 check_site_info = maston.get_ini_raw("check_info.ini")
@@ -175,21 +205,25 @@ btn_start_valid.grid(row=3, column=2, columnspan=2)
 
 proxy_ini.read("proxy.ini")
 get_proxies_list = re.split("[\s]+", proxy_ini.get("get_proxy", "proxies_list"))
-allproxies = re.split("[\s]+", proxy_ini.get("valied_proxy", "proxies_list"))
+# allproxies = re.split("[\s]+", proxy_ini.get("valied_proxy", "proxies_list"))
+allproxies = tree_proxies.read_db()
 valied_proxies_list = allproxies
 
-allproxies_timeout = []
-for temp_proxy in allproxies:
-    allproxies_timeout.append(re.split("&", temp_proxy))
+# allproxies_timeout = []
+# for temp_proxy in allproxies:
+#     allproxies_timeout.append(re.split("&", temp_proxy))
 tree_proxies.init_treeview(("代理IP:Port", "延时"))
-tree_proxies.add_data_treeview(allproxies_timeout)
+tree_proxies.add_data_treeview(allproxies, skip_datebase=False)
 
 text_proxies_get.insert(1.0, "\n".join(get_proxies_list))
-text_proxies_valided.insert(1.0, "\n".join(valied_proxies_list))
+temp_text = ""
+for each_item in valied_proxies_list:
+    temp_text += each_item[0] + "&" + str(each_item[1]) + "\n"
+text_proxies_valided.insert(1.0, temp_text[:-1])
 lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)) + "）：")
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.21")
+root.title("代理测试工具 V0.31")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()
