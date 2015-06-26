@@ -1,4 +1,6 @@
 # coding=utf-8
+import random
+
 __author__ = 'maston'
 
 import tkinter
@@ -9,9 +11,66 @@ import tkinter.scrolledtext
 import configparser
 import check_proxy
 import tkinter.ttk as ttk
+import tkinter.font as tkfont
+import pyperclip
 
 num_valid_thread = 100
 
+class TreeProxies(object):
+    def __init__(self, frame):
+        self.frame_tree = frame
+        self.treeview_proxies = ttk.Treeview(frame_tree, columns=("代理IP:Port", "延时"), show="headings", height=14)
+        self.scroll_tree_v = ttk.Scrollbar(frame_tree, orient="vertical", command=self.treeview_proxies.yview)
+        self.scroll_tree_h = ttk.Scrollbar(frame_tree, orient="horizontal", command=self.treeview_proxies.xview)
+
+    def init_treeview(self, treeview_head):
+        self.treeview_proxies.config(yscrollcommand=self.scroll_tree_v.set, xscrollcommand=self.scroll_tree_h.set)
+        self.treeview_proxies.grid(sticky="sew")
+        self.scroll_tree_v.grid(row=0, column=1, sticky="ns")
+        self.scroll_tree_h.grid(row=1, column=0, sticky="we")
+        for col in treeview_head:
+            self.treeview_proxies.heading(col, anchor="w", text=col,
+                                          command=lambda c=col: self.sort_treeview(c, 0))
+            self.treeview_proxies.column(col, width=tkfont.Font().measure(col))
+        self.treeview_proxies.column(0, width=115)
+        self.treeview_proxies.column(1, width=40)
+        self.treeview_proxies.bind("<Button-3>", self.right_click)
+
+    def add_data_treeview(self, list_data):
+        for each_proxy in list_data:
+            if len(each_proxy) != 2:
+                continue
+            self.treeview_proxies.insert("", 0, value=each_proxy)
+            col_size_now = self.treeview_proxies.column(0)['width']
+            col_size_need = tkfont.Font().measure(each_proxy[0]) - 20  # 测试表明系统计算出的数据过大，修正一下
+            if col_size_need > col_size_now:
+                self.treeview_proxies.column(0, width=col_size_need)
+            col_size_now = self.treeview_proxies.column(1)['width']
+            col_size_need = tkfont.Font().measure(str(each_proxy[1])) + 10  # 测试表明系统计算出的数据过小，修正一下
+            if col_size_need > col_size_now:
+                self.treeview_proxies.column(1, width=col_size_need)
+            # self.sort_treeview(1, 0)
+
+    def delete_treeview(self):
+        self.treeview_proxies.delete(*self.treeview_proxies.get_children(""))
+
+    def sort_treeview(self, col, direct):
+        try:
+            data = [(int(self.treeview_proxies.set(node, col)), node) for node in self.treeview_proxies.get_children("")]
+        except ValueError:
+            data = [(self.treeview_proxies.set(node, col), node) for node in self.treeview_proxies.get_children("")]
+        data.sort(reverse=direct)
+        for new_index, item in enumerate(data):
+            self.treeview_proxies.move(item[1], "", new_index)
+        self.treeview_proxies.heading(col, command=lambda c=col: self.sort_treeview(c, int(not direct)))
+
+    def right_click(self, event):
+        iid = self.treeview_proxies.identify_row(event.y)
+        if iid:
+            pyperclip.copy(self.treeview_proxies.item(iid)["values"][0])
+            pass
+        else:
+            pass
 
 def get_proxy(this_site_info):
     global get_proxies_list
@@ -27,7 +86,6 @@ def get_proxy(this_site_info):
         proxies_list_locker.release()
     except Exception as e:
         print("\nget proxy list error:\n%s\n%s" % (this_site_info['url'], repr(e)))
-
 
 def start_get_proxy_thread():
     btn_start_get.config(state=tkinter.DISABLED)
@@ -48,13 +106,11 @@ def start_get_proxy_thread():
     lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)) + "）：")
     btn_start_get.config(state=tkinter.NORMAL)
 
-
 def btn_start_get_click():
     global leech_site_info
     leech_site_info = maston.get_ini_raw("leech_site_info.ini")
     th_getproxy = threading.Thread(target=start_get_proxy_thread)
     th_getproxy.start()
-
 
 def btn_start_valid_click():
     global get_proxies_list
@@ -62,16 +118,16 @@ def btn_start_valid_click():
     if "" in get_proxies_list:
         get_proxies_list.remove("")
     text_proxies_valided.delete(1.0, tkinter.END)
+    tree_proxies.delete_treeview()
     th_check = threading.Thread(target=check_proxy.check_proxy,
                                 args=(get_proxies_list, check_site_info, (2, 3), num_valid_thread,
-                                      lab_verify_process, text_proxies_valided, btn_start_valid)
+                                      lab_verify_process, text_proxies_valided, btn_start_valid, tree_proxies)
                                 # args=(函数名， 检测用站点字典，(至少成功次数，总尝试次数)，验证线程数，
                                 # 显示验证进度的lab， 显示验证结果的TEXT，开始验证的按钮（控制disable/enable）)
                                 )
     # th_check.setDaemon(True)
     th_check.setDaemon(True)
     th_check.start()
-
 
 def window_closing():
     check_proxy.g_b_stop = True
@@ -83,7 +139,6 @@ def window_closing():
     with open("proxy.ini", "w") as f_save_proxy:
         proxy_ini.write(f_save_proxy)
     root.destroy()
-
 
 check_site_info = maston.get_ini_raw("check_info.ini")
 # 格式为{'site1_name':{'url':string, 'keyword':string, 'timeout':int}, ...}
@@ -97,20 +152,14 @@ lab_proxy_get = tkinter.Label(top, text="获取的代理列表：")
 lab_proxy_valided = tkinter.Label(top, text="已验证代理列表（" + str(num_valid_thread) + "线程）：")
 lab_space = tkinter.Label(top, text=" ")
 text_proxies_get = tkinter.scrolledtext.ScrolledText(top, width=24, height=24)
-text_proxies_valided = tkinter.scrolledtext.ScrolledText(top, width=24, height=24)
+text_proxies_valided = tkinter.scrolledtext.ScrolledText(top, width=28, height=24)
 # lab_proxy_count = Tkinter.Label(top, text="代理数量：")
 lab_verify_process = tkinter.Label(top, text="验证进度：未开始")
 btn_start_get = tkinter.Button(top, text="     开始获取    ", command=btn_start_get_click)
 btn_start_valid = tkinter.Button(top, text="     开始验证    ", command=btn_start_valid_click)
 
-frame_tree = ttk.Frame(top)
-tree_view = ttk.Treeview(frame_tree, columns=("代理IP:Port", "延时"), show="headings", height=14)
-scroll_tree_v = ttk.Scrollbar(frame_tree, orient="vertical", command=tree_view.yview)
-scroll_tree_h = ttk.Scrollbar(frame_tree, orient="horizontal", command=tree_view.xview)
-tree_view.config(yscrollcommand=scroll_tree_v.set, xscrollcommand=scroll_tree_h.set)
-tree_view.grid(sticky="sew")
-scroll_tree_v.grid(row=0,column=1, sticky="ns")
-scroll_tree_h.grid(row=1,column=0, sticky="we")
+frame_tree = ttk.Frame(top, width=50)
+tree_proxies = TreeProxies(frame_tree)
 
 lab_proxy_get.grid(row=0, column=0, sticky="W")
 lab_proxy_valided.grid(row=0, column=2, sticky="W")
@@ -120,23 +169,27 @@ text_proxies_valided.grid(row=1, column=2)
 
 frame_tree.grid(row=1, column=3, sticky="swe")
 
-lab_verify_process.grid(row=2, column=0, columnspan=3, sticky="E")
+lab_verify_process.grid(row=2, column=0, columnspan=4, sticky="E")
 btn_start_get.grid(row=3, column=0, columnspan=2)
 btn_start_valid.grid(row=3, column=2, columnspan=2)
 
 proxy_ini.read("proxy.ini")
 get_proxies_list = re.split("[\s]+", proxy_ini.get("get_proxy", "proxies_list"))
-valied_proxies_list = re.split("[\s]+", proxy_ini.get("valied_proxy", "proxies_list"))
+allproxies = re.split("[\s]+", proxy_ini.get("valied_proxy", "proxies_list"))
+valied_proxies_list = allproxies
+
+allproxies_timeout = []
+for temp_proxy in allproxies:
+    allproxies_timeout.append(re.split("&", temp_proxy))
+tree_proxies.init_treeview(("代理IP:Port", "延时"))
+tree_proxies.add_data_treeview(allproxies_timeout)
 
 text_proxies_get.insert(1.0, "\n".join(get_proxies_list))
 text_proxies_valided.insert(1.0, "\n".join(valied_proxies_list))
 lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)) + "）：")
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
-
-
-
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.1")
+root.title("代理测试工具 V0.2")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()

@@ -58,7 +58,7 @@ def get_a_proxy():
 
 
 def valid_proxy(check_site_info, success_try):
-    global lock_valided_list
+    global lock_valided_list, g_tree_proxies, g_all_statu
     i_error_limit = success_try[1] - success_try[0]
     if i_error_limit < 0:
         i_error_limit = 0
@@ -68,6 +68,7 @@ def valid_proxy(check_site_info, success_try):
         for each_check_site in check_site_info:  # 用每个站点来测试代理
             # each_check_site内容为{'url':string, 'keyword':string, 'timeout':int}
             i_error_now = 0
+            proxy_speed_recorder = {each_check_site: []}
             for iCounter in range(0, success_try[1]):  # 循环若干次测试代理，如错误超过上限，退出测试
                 html_result = ""
                 if (datetime.datetime.now() - g_gui_last_update_time).seconds > g_gui_update_interval:
@@ -75,35 +76,44 @@ def valid_proxy(check_site_info, success_try):
                 redraw_gui_event_finished.wait()  # 如果需要处理GUI，等待处理完成后再继续
                 try:
                     read_timeout = int(check_site_info[each_check_site]['timeout'])
+                    used_time_seconds = 0
                     connect_timeout = read_timeout / 2
                     if connect_timeout < 2:
                         connect_timeout = 2
+                    start_test_time = time.time()
                     req_result = requests.get(check_site_info[each_check_site]['url'],
                                               timeout=(connect_timeout, read_timeout),
                                               proxies={'http': proxy_now})
+                    used_time_seconds = (time.time() - start_test_time)*1000
                     html_result = str(req_result.text.encode(req_result.encoding))
                 except Exception as e:
+                    used_time_seconds = -1
                     print("\nError in proxy %s:\n%r" % (proxy_now, e))
                 if html_result.find(check_site_info[each_check_site]['keyword']) < 0:
                     i_error_now += 1
                     if i_error_now > i_error_limit:
                         print(('!' * 10 + maston.now() + '!' * 10 + '\nInvalided proxy: ' + proxy_now))
                         break  # 对应的是  for iCounter in range(0, success_try[1]): 即不再进行该测试站点的余下测试了
+                else:
+                    proxy_speed_recorder[each_check_site].append((iCounter, used_time_seconds))
             if i_error_now > i_error_limit:
                 break  # 对应的是  for each_check_site in check_site_info:  即不再进行余下测试站点的测试了，该代理不合格
         if i_error_now <= i_error_limit:
+            # 计算该代理的平均速度
+            all_used_time = 0
+            all_test_time = 0
+            for each_check_site in proxy_speed_recorder:
+                for each_test in proxy_speed_recorder[each_check_site]:
+                    all_used_time += each_test[1]
+                    all_test_time += 1
+            avarge_time = round(all_used_time/all_test_time)
             lock_valided_list.acquire()
+            proxies_valided_list.append((proxy_now, avarge_time))
             try:
-                proxies_valided_list.index(proxy_now)
-            except ValueError:
-                # 通过全部测试并与之前测试的不重复，表明该代理合格，保存到有效代理列表中
-                proxies_valided_list.append(proxy_now)
-                try:
-                    g_all_statu["text_proxy_valid_append"] += proxy_now + "\n"
-                    # g_text_valided_proxies.insert(1.0, proxy_now + "\n")  # 实时显示在text中
-                except Exception as e2:
-                    print("""g_all_statu["text_proxy_valid_append"] is wrong:\n""" + repr(e2))
-
+                g_all_statu["text_proxy_valid_append"] += proxy_now + "&" + str(avarge_time) + "\n"  # 显示在text中
+                g_tree_proxies.add_data_treeview([(proxy_now, avarge_time)])
+            except Exception as e2:
+                print("""g_all_statu["text_proxy_valid_append"] is wrong:\n""" + repr(e2))
             lock_valided_list.release()
 
         time.sleep(1)
@@ -149,10 +159,10 @@ def thread_monitor(check_site_info, success_try, th_num):
 
 
 def check_proxy(proxies_list, check_site_info, success_try, threads,
-                lab_processing, text_valided_proxies, btn_valided_proxies):
+                lab_processing, text_valided_proxies, btn_valided_proxies, tree_proxies):
     """
     输入proxies_list(待检测的代理列表)和check_site_info(检测用网站的信息字典），检测标准为元组success_try(成功次数，总尝试次数），
-    运行线程数量为：threads, 运行的进度显示在lab_processing中。
+    运行线程数量为：threads, 运行的进度显示在lab_processing中，结果也显示在tree_proxies表格中。
     check_site_info格式为：{'site1_name':{'url':string, 'keyword':string, 'timeout':int}, ...}
     返回proxies_valided_list(测试可用的代理列表)
     :param proxies_list: 待检测的代理列表
@@ -160,15 +170,17 @@ def check_proxy(proxies_list, check_site_info, success_try, threads,
     :param success_try: 元组(成功次数，总尝试次数）
     :param threads: 运行线程数量
     :param lab_processing: 显示检测进度的lable
+    :param tree_proxies: 显示代理的表格
     :return:
     """
     global proxies_unvalided_list, g_lab_processing, proxies_valided_list, g_text_valided_proxies, g_btn_Valid_proxies
-    global g_proxy_list_pointer, g_start_time
+    global g_proxy_list_pointer, g_start_time, g_tree_proxies
 
     proxies_unvalided_list = proxies_list
     g_lab_processing = lab_processing
     g_text_valided_proxies = text_valided_proxies
     g_btn_Valid_proxies = btn_valided_proxies
+    g_tree_proxies = tree_proxies
     proxies_valided_list = []
     g_start_time = datetime.datetime.now()
     g_btn_Valid_proxies.config(state=tkinter.DISABLED)
@@ -177,12 +189,10 @@ def check_proxy(proxies_list, check_site_info, success_try, threads,
 
     # proxies_valided_list = list(set(proxies_valided_list))  # 返回前去重
     g_btn_Valid_proxies.config(state=tkinter.NORMAL)
-    g_text_valided_proxies.delete(1.0, tkinter.END)
-    g_text_valided_proxies.insert(1.0, "\n".join(proxies_valided_list))
     g_proxy_list_pointer = -1
     return proxies_valided_list
 
-
+g_tree_proxies = None
 g_proxy_queue = queue.Queue(0)
 lock_valided_list = threading.Lock()
 redraw_gui_event_finished = threading.Event()
