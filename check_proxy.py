@@ -111,7 +111,7 @@ def valid_proxy(check_site_info, success_try):
             proxies_valided_list.append((proxy_now, avarge_time))
             try:
                 g_all_statu["text_proxy_valid_append"] += proxy_now + "&" + str(avarge_time) + "\n"  # 显示在text中
-                # g_tree_proxies.add_data_treeview([(proxy_now, avarge_time)])  # 同时写入数据库中
+                g_tree_proxies.add_data_treeview([(proxy_now, avarge_time)], skip_datebase=True)  # 同时写入treeview中
             except Exception as e2:
                 print("""g_all_statu["text_proxy_valid_append"] is wrong:\n""" + repr(e2))
             lock_valided_list.release()

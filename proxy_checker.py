@@ -16,8 +16,6 @@ import pyperclip
 import os
 import sqlite3
 
-num_valid_thread = 100
-
 class TreeProxies(object):
     def __init__(self, frame):
         self.frame_tree = frame
@@ -176,6 +174,14 @@ leech_site_info = {}
 
 proxies_list_locker = threading.Lock()
 proxy_ini = configparser.ConfigParser()
+proxy_checker_ini = configparser.ConfigParser()
+
+try:
+    proxy_checker_ini.read("proxy_checker.ini")
+    num_valid_thread = int(proxy_checker_ini.get("system", "check_thread_num"))
+except Exception:
+    num_valid_thread = 100
+
 root = tkinter.Tk()
 top = tkinter.Frame()
 lab_proxy_get = tkinter.Label(top, text="获取的代理列表：")
@@ -205,6 +211,8 @@ btn_start_valid.grid(row=3, column=2, columnspan=2)
 
 proxy_ini.read("proxy.ini")
 get_proxies_list = re.split("[\s]+", proxy_ini.get("get_proxy", "proxies_list"))
+
+
 # allproxies = re.split("[\s]+", proxy_ini.get("valied_proxy", "proxies_list"))
 allproxies = tree_proxies.read_db()
 valied_proxies_list = allproxies
@@ -224,6 +232,6 @@ lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.31")
+root.title("代理测试工具 V0.32")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()
