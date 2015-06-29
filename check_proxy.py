@@ -65,6 +65,7 @@ def valid_proxy(check_site_info, success_try):
     i_error_now = 0
     proxy_now = get_a_proxy()
     while proxy_now != "":
+        test_num = 0
         for each_check_site in check_site_info:  # 用每个站点来测试代理
             # each_check_site内容为{'url':string, 'keyword':string, 'timeout':int}
             i_error_now = 0
@@ -76,16 +77,19 @@ def valid_proxy(check_site_info, success_try):
                 redraw_gui_event_finished.wait()  # 如果需要处理GUI，等待处理完成后再继续
                 try:
                     read_timeout = int(check_site_info[each_check_site]['timeout'])
-                    used_time_seconds = 0
                     connect_timeout = read_timeout / 2
                     if connect_timeout < 2:
                         connect_timeout = 2
                     start_test_time = time.time()
+                    req_headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0",
+                        "Referer": check_site_info[each_check_site]['url']}
                     req_result = requests.get(check_site_info[each_check_site]['url'],
                                               timeout=(connect_timeout, read_timeout),
-                                              proxies={'http': proxy_now})
-                    used_time_seconds = (time.time() - start_test_time)*1000
+                                              proxies={'http': proxy_now}, headers=req_headers)
+                    used_time_seconds = (time.time() - start_test_time) * 1000
                     html_result = str(req_result.text.encode(req_result.encoding))
+                    test_num += 1
                 except Exception as e:
                     used_time_seconds = -1
                     print("\nError in proxy %s:\n%r" % (proxy_now, e))
@@ -98,6 +102,7 @@ def valid_proxy(check_site_info, success_try):
                     proxy_speed_recorder[each_check_site].append((iCounter, used_time_seconds))
             if i_error_now > i_error_limit:
                 break  # 对应的是  for each_check_site in check_site_info:  即不再进行余下测试站点的测试了，该代理不合格
+        print("test number:" + str(test_num))
         if i_error_now <= i_error_limit:
             # 计算该代理的平均速度
             all_used_time = 0
@@ -106,7 +111,7 @@ def valid_proxy(check_site_info, success_try):
                 for each_test in proxy_speed_recorder[each_check_site]:
                     all_used_time += each_test[1]
                     all_test_time += 1
-            avarge_time = round(all_used_time/all_test_time)
+            avarge_time = round(all_used_time / all_test_time)
             lock_valided_list.acquire()
             proxies_valided_list.append((proxy_now, avarge_time))
             try:
@@ -192,6 +197,7 @@ def check_proxy(proxies_list, check_site_info, success_try, threads,
     g_proxy_list_pointer = -1
     return proxies_valided_list
 
+
 g_tree_proxies = None
 g_proxy_queue = queue.Queue(0)
 lock_valided_list = threading.Lock()
@@ -217,4 +223,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+
+ main()
