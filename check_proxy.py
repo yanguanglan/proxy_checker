@@ -102,7 +102,7 @@ def valid_proxy(check_site_info, success_try):
                     proxy_speed_recorder[each_check_site].append((iCounter, used_time_seconds))
             if i_error_now > i_error_limit:
                 break  # 对应的是  for each_check_site in check_site_info:  即不再进行余下测试站点的测试了，该代理不合格
-        print(check_site_info[each_check_site]['url'] + " test number:" + str(test_num))
+        print("Proxy: " + proxy_now + " test number:" + str(test_num))
         if i_error_now <= i_error_limit:
             # 计算该代理的平均速度
             all_used_time = 0
