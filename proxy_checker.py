@@ -1,5 +1,4 @@
 # coding=utf-8
-import random
 
 __author__ = 'maston'
 
@@ -15,6 +14,8 @@ import tkinter.font as tkfont
 import pyperclip
 import os
 import sqlite3
+import requests
+
 
 class TreeProxies(object):
     def __init__(self, frame):
@@ -28,8 +29,8 @@ class TreeProxies(object):
         else:
             self.conn = sqlite3.connect("proxy.db")
             self.cu = self.conn.cursor()
-            self.cu.execute("CREATE TABLE proxy_valided_list (proxy_port varchar(21), speed integer) ")
-            self.cu.execute("CREATE TABLE proxy_get_list (proxy_port varchar(21)) ")
+            self.cu.execute("CREATE TABLE proxy_valided_list (proxy_port VARCHAR(21), speed INTEGER) ")
+            self.cu.execute("CREATE TABLE proxy_get_list (proxy_port VARCHAR(21)) ")
         self.cu.execute("PRAGMA synchronous=OFF")
 
     def init_treeview(self, treeview_head):
@@ -65,12 +66,13 @@ class TreeProxies(object):
     def delete_treeview(self):
         self.treeview_proxies.delete(*self.treeview_proxies.get_children(""))
         self.cu.execute("DROP TABLE proxy_valided_list")
-        self.cu.execute("CREATE TABLE proxy_valided_list (proxy_port varchar(21), speed integer) ")
+        self.cu.execute("CREATE TABLE proxy_valided_list (proxy_port VARCHAR(21), speed INTEGER) ")
         self.conn.commit()
 
     def sort_treeview(self, col, direct):
         try:
-            data = [(int(self.treeview_proxies.set(node, col)), node) for node in self.treeview_proxies.get_children("")]
+            data = [(int(self.treeview_proxies.set(node, col)), node) for node in
+                    self.treeview_proxies.get_children("")]
         except ValueError:
             data = [(self.treeview_proxies.set(node, col), node) for node in self.treeview_proxies.get_children("")]
         data.sort(reverse=direct)
@@ -90,20 +92,36 @@ class TreeProxies(object):
         self.cu.execute("SELECT * FROM proxy_valided_list")
         return self.cu.fetchall()
 
+
 def get_proxy(this_site_info):
     global get_proxies_list
-    try:
-        html_content = str(maston.multi_urlopen(this_site_info['url'], this_site_info['post_data'], retryTime=2).read())
-        proxies_this_list_pre = re.findall(this_site_info['regular'], html_content)
-        proxies_this_list = []
-        for each_proxy in proxies_this_list_pre:
-            proxies_this_list.append(each_proxy[0] + ":" + each_proxy[1])
-        global proxies_list_locker
-        proxies_list_locker.acquire()
-        get_proxies_list = list(set(proxies_this_list + get_proxies_list))
-        proxies_list_locker.release()
-    except Exception as e:
-        print("\nget proxy list error:\n%s\n%s" % (this_site_info['url'], repr(e)))
+    try_count = 3
+    proxies_this_list = []
+    while try_count:
+        try:
+            # html_content =
+            # str(maston.multi_urlopen(this_site_info['url'], this_site_info['post_data'], retryTime=2).read())
+            req_headers = {"User-Agent": "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0",
+                           "Referer": this_site_info['url']}
+            if this_site_info['post_data']:
+                html_content = requests.post(this_site_info['url'], this_site_info['post_data'],
+                                             headers=req_headers).text
+            else:
+                html_content = requests.get(this_site_info['url'], headers=req_headers).text
+            proxies_this_list_pre = re.findall(this_site_info['regular'], html_content)
+            for each_proxy in proxies_this_list_pre:
+                proxies_this_list.append(each_proxy[0] + ":" + each_proxy[1])
+            if len(proxies_this_list) < 2:
+                print("The site: " + this_site_info['url'] + " have nothing!\n")
+            try_count = 0
+        except Exception as e:
+            print("\nget proxy list error:\n%s\n%s" % (this_site_info['url'], repr(e)))
+            try_count -= 1
+    global proxies_list_locker
+    proxies_list_locker.acquire()
+    get_proxies_list = list(set(proxies_this_list + get_proxies_list))
+    proxies_list_locker.release()
+
 
 def start_get_proxy_thread():
     btn_start_get.config(state=tkinter.DISABLED)
@@ -124,19 +142,21 @@ def start_get_proxy_thread():
     lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)) + "）：")
     btn_start_get.config(state=tkinter.NORMAL)
 
+
 def btn_start_get_click():
     global leech_site_info
     leech_site_info = maston.get_ini_raw("leech_site_info.ini")
     th_getproxy = threading.Thread(target=start_get_proxy_thread)
     th_getproxy.start()
 
+
 def btn_start_valid_click():
     global get_proxies_list
     get_proxies_list = re.split("[\s]+", text_proxies_get.get(1.0, tkinter.END))
     if "" in get_proxies_list:
         get_proxies_list.remove("")
-    text_proxies_valided.delete(1.0, tkinter.END)
-    tree_proxies.delete_treeview()
+    if text_proxies_valided.get(1.0, tkinter.END).strip() == "":
+        tree_proxies.delete_treeview()
     th_check = threading.Thread(target=check_proxy.check_proxy,
                                 args=(get_proxies_list, check_site_info, (2, 3), num_valid_thread,
                                       lab_verify_process, text_proxies_valided, btn_start_valid, tree_proxies)
@@ -146,6 +166,7 @@ def btn_start_valid_click():
     # th_check.setDaemon(True)
     th_check.setDaemon(True)
     th_check.start()
+
 
 def window_closing():
     check_proxy.g_b_stop = True
@@ -167,6 +188,7 @@ def window_closing():
     tree_proxies.delete_treeview()
     tree_proxies.add_data_treeview(allproxies_timeout)
     root.destroy()
+
 
 check_site_info = maston.get_ini_raw("check_info.ini")
 # 格式为{'site1_name':{'url':string, 'keyword':string, 'timeout':int}, ...}
@@ -232,6 +254,6 @@ lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.32")
+root.title("代理测试工具 V0.33")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()
