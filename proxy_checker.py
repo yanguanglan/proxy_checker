@@ -201,7 +201,7 @@ proxy_checker_ini = configparser.ConfigParser()
 try:
     proxy_checker_ini.read("proxy_checker.ini")
     num_valid_thread = int(proxy_checker_ini.get("system", "check_thread_num"))
-except Exception:
+except Exception as e1:
     num_valid_thread = 100
 
 root = tkinter.Tk()
