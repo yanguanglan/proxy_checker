@@ -71,10 +71,9 @@ def valid_proxy(check_site_info, success_try):
             i_error_now = 0
             proxy_speed_recorder = {each_check_site: []}
             for iCounter in range(0, success_try[1]):  # 循环若干次测试代理，如错误超过上限，退出测试
-                html_result = ""
-                if (datetime.datetime.now() - g_gui_last_update_time).seconds > g_gui_update_interval:
-                    redraw_gui_event_finished.clear()
-                redraw_gui_event_finished.wait()  # 如果需要处理GUI，等待处理完成后再继续
+                # if (datetime.datetime.now() - g_gui_last_update_time).seconds > g_gui_update_interval:
+                #     redraw_gui_event_finished.clear()
+                # redraw_gui_event_finished.wait()  # 如果需要处理GUI，等待处理完成后再继续
                 try:
                     read_timeout = int(check_site_info[each_check_site]['timeout'])
                     connect_timeout = read_timeout / 2
@@ -92,6 +91,7 @@ def valid_proxy(check_site_info, success_try):
                     test_num += 1
                 except Exception as e:
                     used_time_seconds = -1
+                    html_result = ""
                     print("\nError in proxy %s:\n%r" % (proxy_now, e))
                 if html_result.find(check_site_info[each_check_site]['keyword']) < 0:
                     i_error_now += 1
