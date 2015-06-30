@@ -164,7 +164,7 @@ def btn_start_valid_click():
     if text_proxies_valided.get(1.0, tkinter.END).strip() == "":
         tree_proxies.delete_treeview()
     th_check = threading.Thread(target=check_proxy.check_proxy,
-                                args=(get_proxies_list, check_site_info, (2, 3), num_valid_thread,
+                                args=(get_proxies_list, check_site_info, (success_try, all_try), num_valid_thread,
                                       lab_verify_process, text_proxies_valided, btn_start_valid, tree_proxies)
                                 # args=(函数名， 检测用站点字典，(至少成功次数，总尝试次数)，验证线程数，
                                 # 显示验证进度的lab， 显示验证结果的TEXT，开始验证的按钮（控制disable/enable）)
@@ -209,8 +209,12 @@ proxy_checker_ini = configparser.ConfigParser()
 try:
     proxy_checker_ini.read("proxy_checker.ini")
     num_valid_thread = int(proxy_checker_ini.get("system", "check_thread_num"))
+    success_try = int(proxy_checker_ini.get("system", "success_try"))
+    all_try = int(proxy_checker_ini.get("system", "all_try"))
 except Exception as e1:
     num_valid_thread = 100
+    success_try = 2
+    all_try = 3
 
 root = tkinter.Tk()
 top = tkinter.Frame()
@@ -266,6 +270,6 @@ lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.36")
+root.title("代理测试工具 V0.37")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()
