@@ -89,8 +89,11 @@ class TreeProxies(object):
             pass
 
     def read_db(self):
-        self.cu.execute("SELECT * FROM proxy_valided_list")
-        return self.cu.fetchall()
+        try:
+            self.cu.execute("SELECT * FROM proxy_valided_list")
+            return self.cu.fetchall()
+        except Exception:
+            return []
 
 
 def get_proxy(this_site_info):
@@ -126,7 +129,8 @@ def get_proxy(this_site_info):
 def start_get_proxy_thread():
     btn_start_get.config(state=tkinter.DISABLED)
     th_getproxy = []
-    global leech_site_info
+    global leech_site_info, get_proxies_list
+    get_proxies_list = list(set(re.split("[\r\n]+", text_proxies_get.get(1.0, tkinter.END))))
     for this_site_name in leech_site_info:
         this_site_info = {"site_name": this_site_name, "url": "", "regular": "", "post_data": None, "cookie": ""}
         for each_para in leech_site_info[this_site_name]:
@@ -137,8 +141,10 @@ def start_get_proxy_thread():
 
     for th_each in th_getproxy:
         th_each.join()
+    proxies_get_pre = re.sub("[\r\n]+", "\n", "\n".join(get_proxies_list) + "\n")
+    proxies_get = re.sub("^[\r\n]+", "", proxies_get_pre)
     text_proxies_get.delete(1.0, tkinter.END)
-    text_proxies_get.insert(1.0, "\n".join(get_proxies_list) + "\n")
+    text_proxies_get.insert(1.0, proxies_get)
     lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)) + "）：")
     btn_start_get.config(state=tkinter.NORMAL)
 
@@ -170,8 +176,10 @@ def btn_start_valid_click():
 
 def window_closing():
     check_proxy.g_b_stop = True
-    get_proxies_to_save = text_proxies_get.get(1.0, tkinter.END)
-    valied_proxies_to_save = text_proxies_valided.get(1.0, tkinter.END)
+    get_proxies_to_save_pre = text_proxies_get.get(1.0, tkinter.END)
+    get_proxies_to_save = re.sub("[^\d:\.\r\n].+?[\r\n]+", "\n", get_proxies_to_save_pre)
+    valied_proxies_to_save_pre = text_proxies_valided.get(1.0, tkinter.END)
+    valied_proxies_to_save = re.sub("[^\d:\.&\r\n].+?[\r\n]+", "\n", valied_proxies_to_save_pre)
     global proxy_ini
     proxy_ini.set("get_proxy", "proxies_list", get_proxies_to_save)
     proxy_ini.set("valied_proxy", "proxies_list", valied_proxies_to_save)
@@ -232,18 +240,22 @@ btn_start_get.grid(row=3, column=0, columnspan=2)
 btn_start_valid.grid(row=3, column=2, columnspan=2)
 
 proxy_ini.read("proxy.ini")
-get_proxies_list = re.split("[\s]+", proxy_ini.get("get_proxy", "proxies_list"))
+try:
+    get_proxies_list = re.split("[\s]+", proxy_ini.get("get_proxy", "proxies_list"))
+except Exception:
+    get_proxies_list = ""
 
-
-# allproxies = re.split("[\s]+", proxy_ini.get("valied_proxy", "proxies_list"))
-allproxies = tree_proxies.read_db()
-valied_proxies_list = allproxies
-
-# allproxies_timeout = []
-# for temp_proxy in allproxies:
-#     allproxies_timeout.append(re.split("&", temp_proxy))
 tree_proxies.init_treeview(("代理IP:Port", "延时"))
-tree_proxies.add_data_treeview(allproxies, skip_datebase=False)
+all_valided_proxies = tree_proxies.read_db()
+if len(all_valided_proxies) == 0:  # 表示没有从数据库中读到有效代理的数据，转为从ini中读取
+    all_valided_proxies_ini = proxy_ini.get("valied_proxy", "proxies_list")
+    if len(all_valided_proxies_ini) > 10:  # 如小于10表示也未从ini文件中读取到有效的代理数据
+        all_valided_proxies = re.split("[\s]+", re.sub("[\r\n]+", "&9999\n",
+                                                       all_valided_proxies_ini + "\n")[:-1])
+
+tree_proxies.add_data_treeview(all_valided_proxies, skip_datebase=True)
+
+valied_proxies_list = all_valided_proxies
 
 text_proxies_get.insert(1.0, "\n".join(get_proxies_list))
 temp_text = ""
@@ -254,6 +266,6 @@ lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.33")
+root.title("代理测试工具 V0.35")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()

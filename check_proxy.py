@@ -10,6 +10,7 @@ import requests.adapters
 import maston
 import datetime
 import queue
+import re
 
 
 def update_gui():
@@ -52,7 +53,7 @@ def get_a_proxy():
         return ""
 
     if not g_proxy_queue.empty():
-        return str(g_proxy_queue.get())
+        return re.sub("[^\d:\.].+", "", str(g_proxy_queue.get()))
     else:
         return ""
 
