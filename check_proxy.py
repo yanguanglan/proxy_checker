@@ -46,17 +46,17 @@ def update_gui():
         finally:
             redraw_gui_event_finished.set()
 
-
 def get_a_proxy():
-    global g_b_stop, g_all_statu, g_proxy_queue
+    global g_b_stop, g_all_statu, g_proxy_queue, lock_get_proxy
     if g_b_stop:  # 如果有全局停止的信号，则返回空字符串让各个线程退出
         return ""
-
-    if not g_proxy_queue.empty():
-        return re.sub("[^\d:\.].+", "", str(g_proxy_queue.get()))
-    else:
-        return ""
-
+    lock_get_proxy.acquire()
+    try:
+        proxy_now = re.sub("[^\d:\.].+", "", str(g_proxy_queue.get(block=False)))
+    except Exception:
+        proxy_now = ""
+    lock_get_proxy.release()
+    return proxy_now
 
 def valid_proxy(check_site_info, success_try):
     global lock_valided_list, g_tree_proxies, g_all_statu
@@ -203,6 +203,7 @@ def check_proxy(proxies_list, check_site_info, success_try, threads,
 g_tree_proxies = None
 g_proxy_queue = queue.Queue(0)
 lock_valided_list = threading.Lock()
+lock_get_proxy = threading.Lock()
 redraw_gui_event_finished = threading.Event()
 proxies_unvalided_list = []
 proxies_valided_list = []
