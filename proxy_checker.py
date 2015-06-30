@@ -270,6 +270,6 @@ lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.37")
+root.title("代理测试工具 V0.38")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()

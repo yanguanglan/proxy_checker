@@ -72,6 +72,7 @@ def valid_proxy(check_site_info, success_try):
             i_error_now = 0
             proxy_speed_recorder = {each_check_site: []}
             for iCounter in range(0, success_try[1]):  # 循环若干次测试代理，如错误超过上限，退出测试
+                test_num += 1
                 if (datetime.datetime.now() - g_gui_last_update_time).seconds > g_gui_update_interval:
                     redraw_gui_event_finished.clear()
                 redraw_gui_event_finished.wait()  # 如果需要处理GUI，等待处理完成后再继续
@@ -86,11 +87,10 @@ def valid_proxy(check_site_info, success_try):
                         "Referer": check_site_info[each_check_site]['url']}
                     req_result = requests.get(check_site_info[each_check_site]['url'],
                                               timeout=(connect_timeout, read_timeout),
-                                              proxies={'http': proxy_now}, headers=req_headers)
+                                              proxies={'http': proxy_now, 'https': proxy_now}, headers=req_headers)
                     used_time_seconds = (time.time() - start_test_time) * 1000
                     # html_result = str(req_result.text.encode(req_result.encoding))
                     html_result = req_result.text
-                    test_num += 1
                 except Exception as e:
                     used_time_seconds = -1
                     html_result = ""
@@ -102,6 +102,9 @@ def valid_proxy(check_site_info, success_try):
                         break  # 对应的是  for iCounter in range(0, success_try[1]): 即不再进行该测试站点的余下测试了
                 else:
                     proxy_speed_recorder[each_check_site].append((iCounter, used_time_seconds))
+                    # 成功的尝试次数大于等于要求即表明通过该站点的测试
+                    if iCounter + 1 - i_error_now >= success_try[0]:
+                        break
             if i_error_now > i_error_limit:
                 break  # 对应的是  for each_check_site in check_site_info:  即不再进行余下测试站点的测试了，该代理不合格
         print("Proxy: " + proxy_now + " test number:" + str(test_num))
@@ -122,7 +125,6 @@ def valid_proxy(check_site_info, success_try):
             except Exception as e2:
                 print("""g_all_statu["text_proxy_valid_append"] is wrong:\n""" + repr(e2))
             lock_valided_list.release()
-
         time.sleep(1)
         proxy_now = get_a_proxy()
     print("Finish, thread exit")
