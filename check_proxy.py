@@ -50,9 +50,11 @@ def get_a_proxy():
     global g_b_stop, g_all_statu, g_proxy_queue, lock_get_proxy
     if g_b_stop:  # 如果有全局停止的信号，则返回空字符串让各个线程退出
         return ""
+    proxy_now = ""
     lock_get_proxy.acquire()
     try:
-        proxy_now = re.sub("[^\d:\.].+", "", str(g_proxy_queue.get(block=False)))
+        while proxy_now == "":
+            proxy_now = re.sub("[^\d:\.].+", "", str(g_proxy_queue.get(block=False)))
     except Exception:
         proxy_now = ""
     lock_get_proxy.release()
