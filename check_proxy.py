@@ -1,9 +1,9 @@
 # coding=utf-8
 # __author__ = 'maston'
 
+import tkinter
 import threading
 import time
-import tkinter
 import requests
 import requests.exceptions
 import requests.adapters

@@ -108,9 +108,9 @@ def get_proxy(this_site_info):
                            "Referer": this_site_info['url']}
             if this_site_info['post_data']:
                 html_content = requests.post(this_site_info['url'], this_site_info['post_data'],
-                                             headers=req_headers).text
+                                             headers=req_headers, timeout=(3, 8)).text
             else:
-                html_content = requests.get(this_site_info['url'], headers=req_headers).text
+                html_content = requests.get(this_site_info['url'], headers=req_headers, timeout=(3, 8)).text
             proxies_this_list_pre = re.findall(this_site_info['regular'], html_content)
             for each_proxy in proxies_this_list_pre:
                 proxies_this_list.append(each_proxy[0] + ":" + each_proxy[1])
@@ -118,7 +118,8 @@ def get_proxy(this_site_info):
                 print("The site: " + this_site_info['url'] + " have nothing!\n")
             try_count = 0
         except Exception as e:
-            print("\nget proxy list error:\n%s\n%s" % (this_site_info['url'], repr(e)))
+            if try_count == 1:
+                print("\nGet proxy list error:\n%s\n%s" % ( this_site_info['url'], repr(e)))
             try_count -= 1
     global proxies_list_locker
     proxies_list_locker.acquire()
@@ -270,6 +271,6 @@ lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.38")
+root.title("代理测试工具 V0.39")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()
