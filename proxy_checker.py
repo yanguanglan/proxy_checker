@@ -15,6 +15,8 @@ import pyperclip
 import os
 import sqlite3
 import requests
+import time
+import random
 
 
 class TreeProxies(object):
@@ -111,16 +113,22 @@ def get_proxy(this_site_info):
                                              headers=req_headers, timeout=(3, 8)).text
             else:
                 html_content = requests.get(this_site_info['url'], headers=req_headers, timeout=(3, 8)).text
-            proxies_this_list_pre = re.findall(this_site_info['regular'], html_content)
+            proxies_this_list_pre = re.findall(this_site_info['regular'], html_content, re.S)
             for each_proxy in proxies_this_list_pre:
                 proxies_this_list.append(each_proxy[0] + ":" + each_proxy[1])
             if len(proxies_this_list) < 2:
-                print("The site: " + this_site_info['url'] + " have nothing!\n")
-            try_count = 0
+                try_count -= 1
+                if try_count == 0:
+                    print("The site: " + this_site_info['url'] + " have nothing!\n")
+                else:
+                    time.sleep(random.uniform(0.5, 2))
+            else:
+                try_count = 0
         except Exception as e:
             if try_count == 1:
-                print("\nGet proxy list error:\n%s\n%s" % ( this_site_info['url'], repr(e)))
+                print("\nGet proxy list error:\n%s\n%s" % (this_site_info['url'], repr(e)))
             try_count -= 1
+            time.sleep(random.uniform(0.5, 2))
     global proxies_list_locker
     proxies_list_locker.acquire()
     get_proxies_list = list(set(proxies_this_list + get_proxies_list))
@@ -132,12 +140,14 @@ def start_get_proxy_thread():
     th_getproxy = []
     global leech_site_info, get_proxies_list
     get_proxies_list = list(set(re.split("[\r\n]+", text_proxies_get.get(1.0, tkinter.END))))
+
     for this_site_name in leech_site_info:
         this_site_info = {"site_name": this_site_name, "url": "", "regular": "", "post_data": None, "cookie": ""}
         for each_para in leech_site_info[this_site_name]:
             this_site_info[each_para] = leech_site_info[this_site_name][each_para]
         t = threading.Thread(target=get_proxy, args=(this_site_info,))
         t.start()
+        time.sleep(1)
         th_getproxy.append(t)
 
     for th_each in th_getproxy:
@@ -281,6 +291,6 @@ update_lab_get_proxies()
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.41")
+root.title("代理测试工具 V0.42")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()
