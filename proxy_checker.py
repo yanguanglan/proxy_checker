@@ -175,6 +175,14 @@ def btn_start_valid_click():
     th_check.start()
 
 
+def update_lab_get_proxies(event=None):
+    global get_proxies_list
+    get_proxies_list = list(set(re.split("\s+", text_proxies_get.get(1.0, tkinter.END))))
+    text_proxies_get.delete(1.0, tkinter.END)
+    text_proxies_get.insert(1.0, '\n'.join(each_item1 for each_item1 in get_proxies_list if each_item1 != ""))
+    lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)) + "）：")
+
+
 def window_closing():
     check_proxy.g_b_stop = True
     get_proxies_to_save_pre = text_proxies_get.get(1.0, tkinter.END)
@@ -238,6 +246,8 @@ text_proxies_get.grid(row=1, column=0)
 lab_space.grid(row=1, column=1, padx=4)
 text_proxies_valided.grid(row=1, column=2)
 
+text_proxies_get.bind("<FocusOut>", update_lab_get_proxies)
+
 frame_tree.grid(row=1, column=3, sticky="swe")
 
 lab_verify_process.grid(row=2, column=0, columnspan=4, sticky="E")
@@ -267,10 +277,10 @@ temp_text = ""
 for each_item in valied_proxies_list:
     temp_text += each_item[0] + "&" + str(each_item[1]) + "\n"
 text_proxies_valided.insert(1.0, temp_text[:-1])
-lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)) + "）：")
+update_lab_get_proxies()
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.39")
+root.title("代理测试工具 V0.41")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()

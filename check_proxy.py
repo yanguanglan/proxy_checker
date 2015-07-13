@@ -46,6 +46,7 @@ def update_gui():
         finally:
             redraw_gui_event_finished.set()
 
+
 def get_a_proxy():
     global g_b_stop, g_all_statu, g_proxy_queue, lock_get_proxy
     if g_b_stop:  # 如果有全局停止的信号，则返回空字符串让各个线程退出
@@ -60,8 +61,9 @@ def get_a_proxy():
     lock_get_proxy.release()
     return proxy_now
 
+
 def valid_proxy(check_site_info, success_try):
-    global lock_valided_list, g_tree_proxies, g_all_statu
+    global lock_valided_list, g_tree_proxies, g_all_statu, proxies_valided_list
     i_error_limit = success_try[1] - success_try[0]
     if i_error_limit < 0:
         i_error_limit = 0
@@ -118,7 +120,7 @@ def valid_proxy(check_site_info, success_try):
                 for each_test in proxy_speed_recorder[each_check_site]:
                     all_used_time += each_test[1]
                     all_test_time += 1
-            avarge_time = round(all_used_time / all_test_time)
+            avarge_time = round(all_used_time / all_test_time) if all_test_time != 0 else 0
             lock_valided_list.acquire()
             proxies_valided_list.append((proxy_now, avarge_time))
             try:
@@ -230,5 +232,4 @@ def main():
 
 
 if __name__ == "__main__":
-
- main()
+    main()
