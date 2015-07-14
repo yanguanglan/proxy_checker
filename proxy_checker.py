@@ -187,10 +187,11 @@ def btn_start_valid_click():
 
 def update_lab_get_proxies(event=None):
     global get_proxies_list
-    get_proxies_list = list(set(re.split("\s+", text_proxies_get.get(1.0, tkinter.END))))
-    text_proxies_get.delete(1.0, tkinter.END)
-    text_proxies_get.insert(1.0, '\n'.join(each_item1 for each_item1 in get_proxies_list if each_item1 != ""))
-    lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list)) + "）：")
+    get_proxies_list_now = list(set(re.split("\s+", text_proxies_get.get(1.0, tkinter.END))))
+    if get_proxies_list != get_proxies_list_now:
+        text_proxies_get.delete(1.0, tkinter.END)
+        text_proxies_get.insert(1.0, '\n'.join(each_item1 for each_item1 in get_proxies_list_now if each_item1 != ""))
+    lab_proxy_get.config(text="获取的代理列表（" + str(len(get_proxies_list_now)) + "）：")
 
 
 def window_closing():
@@ -291,6 +292,6 @@ update_lab_get_proxies()
 lab_verify_process.config(lab_verify_process, text="验证数量：" + str(len(valied_proxies_list)))
 
 maston.center_screen(root, top, 20)
-root.title("代理测试工具 V0.42")
+root.title("代理测试工具 V0.43")
 root.protocol("WM_DELETE_WINDOW", window_closing)
 root.mainloop()
